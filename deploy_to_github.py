@@ -60,7 +60,7 @@ def push_to_github(repo_name, username, token):
     
     # 推送代码
     try:
-        subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
+        subprocess.run(["git", "push", "-u", "origin", "master"], check=True)
         print("代码推送成功")
     except subprocess.CalledProcessError as e:
         print(f"代码推送失败: {e}")

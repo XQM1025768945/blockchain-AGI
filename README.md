@@ -266,6 +266,14 @@ python deploy_to_cloud.py --tag your-dockerhub-username/global-brain:latest
 python deploy_to_github.py --repo-name global-brain --username your-github-username --token your-github-token
 ```
 
+在运行此脚本之前，您需要在GitHub上创建一个个人访问令牌（Personal Access Token）：
+
+1. 登录到您的GitHub账户
+2. 转到设置（Settings）> 开发者设置（Developer settings）> 个人访问令牌（Personal access tokens）
+3. 点击"Generate new token"
+4. 选择适当的权限（至少需要repo权限）
+5. 复制生成的令牌
+
 或者，您也可以手动将项目推送到GitHub：
 
 ```bash
@@ -286,6 +294,19 @@ git push -u origin master
 ```
 
 请确保在这些平台上创建相应的仓库，并配置好CI/CD流程。
+
+### 自动部署和同步
+
+项目配置了GitHub Actions工作流，可以在拉取请求合并后自动运行区块链并同步终端节点。
+
+工作流文件：`.github/workflows/deploy_and_sync.yml`
+
+该工作流会在以下条件下触发：
+1. 拉取请求被合并到master分支
+2. 自动运行`main.py`脚本启动区块链
+3. 系统会自动发现并同步网络中的终端节点
+
+要使用此功能，请确保在GitHub仓库设置中配置了必要的环境变量，如`BITTENSOR_API_KEY`。
 
 ## 许可证
 
