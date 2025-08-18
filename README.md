@@ -259,7 +259,33 @@ python deploy_to_cloud.py --tag your-dockerhub-username/global-brain:latest
 
 ### 开源平台部署
 
-项目可以部署到各种开源平台，如GitHub、GitLab等。请确保在这些平台上创建相应的仓库，并配置好CI/CD流程。
+项目可以部署到各种开源平台，如GitHub、GitLab等。以下是如何将项目部署到GitHub的示例：
+
+```bash
+# 部署到GitHub
+python deploy_to_github.py --repo-name global-brain --username your-github-username --token your-github-token
+```
+
+或者，您也可以手动将项目推送到GitHub：
+
+```bash
+# 初始化Git仓库
+git init
+
+# 添加所有文件
+git add .
+
+# 提交更改
+git commit -m "Initial commit"
+
+# 添加远程仓库
+git remote add origin https://github.com/your-username/your-repo-name.git
+
+# 推送到GitHub
+git push -u origin master
+```
+
+请确保在这些平台上创建相应的仓库，并配置好CI/CD流程。
 
 ## 许可证
 
