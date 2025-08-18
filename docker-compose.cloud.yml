@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  global-brain:
+    image: your-dockerhub-username/global-brain:latest
+    ports:
+      - "8888:8888"
+    environment:
+      - BITTENSOR_API_KEY=your_api_key_here
+      - ENCRYPTION_KEY=default_key_32_bytes_long!!
+    volumes:
+      - ./model:/app/model
+      - ./install:/app/install
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+      - ./knowledge_base/data:/app/knowledge_base/data
+    restart: unless-stopped
+
+  # 可以根据需要添加其他服务
+  # redis:
+  #   image: redis:alpine
+  #   restart: unless-stopped
+
+volumes:
+  model:
+  install:
+  temp:
+  logs:
+  knowledge_base_data:
