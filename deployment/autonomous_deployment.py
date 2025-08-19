@@ -9,8 +9,19 @@ import sys
 import json
 import hashlib
 import platform
+import logging
 from datetime import datetime
 from typing import Dict, List
+
+# 添加项目根目录到sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 导入统一日志配置
+import logging_config
+
+# 设置日志配置
+logging_config.setup_logging()
+logger = logging_config.get_logger('autonomous_deployment')
 
 
 class AutonomousDeployment:
@@ -24,6 +35,9 @@ class AutonomousDeployment:
         self.model_repo_url = model_repo_url
         self.deployment_log = []
         self.model_versions: Dict[str, List[Dict]] = {}  # 存储模型版本信息
+        
+        # 初始化日志记录
+        self.logger = logging_config.get_logger('autonomous_deployment')
         
     def get_system_info(self):
         """
@@ -55,6 +69,7 @@ class AutonomousDeployment:
         model_file = "model.pt"
         
         # 记录日志
+        self.logger.info(f"模型下载完成: {model_file}")
         self.deployment_log.append({
             "action": "download",
             "model_version": model_version,
@@ -83,6 +98,10 @@ class AutonomousDeployment:
             file_hash = hashlib.sha256(f.read()).hexdigest()
             
         # 记录日志
+        if not expected_hash or file_hash == expected_hash:
+            self.logger.info(f"模型验证成功: {model_file}")
+        else:
+            self.logger.error(f"模型验证失败: {model_file}, 期望哈希: {expected_hash}, 计算哈希: {file_hash}")
         self.deployment_log.append({
             "action": "verify",
             "file": model_file,
@@ -124,6 +143,7 @@ class AutonomousDeployment:
                 json.dump(install_info, f, indent=2)
                 
             # 记录日志
+            self.logger.info(f"模型安装成功: {model_file} -> {install_path}")
             self.deployment_log.append({
                 "action": "install",
                 "model_file": model_file,
@@ -147,6 +167,7 @@ class AutonomousDeployment:
             return True
         except Exception as e:
             # 记录日志
+            self.logger.error(f"模型安装失败: {model_file} -> {install_path}, 错误: {str(e)}")
             self.deployment_log.append({
                 "action": "install",
                 "model_file": model_file,
@@ -171,29 +192,29 @@ class AutonomousDeployment:
         Returns:
             bool: 部署结果
         """
-        print("开始自主部署流程...")
+        self.logger.info("开始自主部署流程...")
         
         # 1. 下载模型
-        print("1. 下载模型...")
+        self.logger.info("1. 下载模型...")
         model_file = self.download_model(model_version)
         if not model_file:
-            print("模型下载失败")
+            self.logger.error("模型下载失败")
             return False
             
         # 2. 验证模型
-        print("2. 验证模型...")
+        self.logger.info("2. 验证模型...")
         if not self.verify_model(model_file, expected_hash):
-            print("模型验证失败")
+            self.logger.warning("模型验证失败")
             if not continue_on_verification_failure:
                 return False
             
         # 3. 安装模型
-        print("3. 安装模型...")
+        self.logger.info("3. 安装模型...")
         if not self.install_model(model_file, install_path):
-            print("模型安装失败")
+            self.logger.error("模型安装失败")
             return False
             
-        print("部署完成!")
+        self.logger.info("部署完成!")
         return self.deployment_log
         
     def get_deployment_log(self):

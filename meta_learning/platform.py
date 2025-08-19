@@ -4,11 +4,23 @@
 实现元知识的共享、隐私保护和版本管理
 """
 
+import sys
+import os
+from datetime import datetime
 import hashlib
 import json
 import re
-from datetime import datetime
 from cryptography.fernet import Fernet
+
+# 添加项目根目录到sys.path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+# 导入统一日志配置
+import logging_config
+
+# 获取日志记录器
+logger = logging_config.get_logger('meta_learning')
 
 
 class MetaLearningPlatform:
@@ -35,6 +47,8 @@ class MetaLearningPlatform:
             owner (str): 所有者
             permissions (dict): 访问权限
         """
+        logger.info(f"添加元知识: {key}, 所有者: {owner}")
+        
         # 加密数据
         encrypted_data = self.cipher.encrypt(json.dumps(data).encode())
         
@@ -61,6 +75,8 @@ class MetaLearningPlatform:
         # 更新访问控制
         self.access_control[key] = meta_entry["permissions"]
         
+        logger.info(f"元知识 {key} 添加成功，版本: {meta_entry['version']}")
+        
     def get_meta_knowledge(self, key, user):
         """
         获取元知识
@@ -72,13 +88,17 @@ class MetaLearningPlatform:
         Returns:
             any: 解密后的元知识数据
         """
+        logger.info(f"用户 {user} 请求获取元知识: {key}")
+        
         if key not in self.meta_knowledge_base:
+            logger.error(f"元知识 {key} 不存在")
             raise Exception(f"元知识 {key} 不存在")
             
         entry = self.meta_knowledge_base[key]
         
         # 检查读权限
         if "read" in entry["permissions"] and user not in entry["permissions"]["read"]:
+            logger.error(f"用户 {user} 没有读取权限访问元知识 {key}")
             raise Exception(f"用户 {user} 没有读取权限")
             
         # 解密数据
@@ -90,6 +110,7 @@ class MetaLearningPlatform:
             privacy_level = entry['privacy_level']
             data = self._apply_privacy_filters(data, privacy_level)
             
+        logger.info(f"用户 {user} 成功获取元知识: {key}")
         return data
         
     def update_meta_knowledge(self, key, data, user):

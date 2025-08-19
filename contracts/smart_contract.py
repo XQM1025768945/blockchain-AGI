@@ -4,10 +4,22 @@
 实现区块智能功能，包括数据分析、异常检测、预测模型、自动化决策和安全审计
 """
 
+import sys
+import os
+from datetime import datetime
 import hashlib
 import json
 import re
-from datetime import datetime
+
+# 添加项目根目录到sys.path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+# 导入统一日志配置
+import logging_config
+
+# 获取日志记录器
+logger = logging_config.get_logger('smart_contract')
 
 
 class SmartContract:
@@ -58,8 +70,10 @@ class SmartContract:
             any: 函数执行结果
         """
         if name not in self.functions:
+            logger.error(f"函数 {name} 不存在")
             raise Exception(f"函数 {name} 不存在")
             
+        logger.info(f"执行合约函数: {name}")
         return self.functions[name](*args, **kwargs)
         
     def data_analysis(self, data):

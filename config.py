@@ -65,7 +65,9 @@ EXPANSION_CONFIG = {
 LOGGING_CONFIG = {
     "level": "INFO",
     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    "file": "./logs/global_brain.log"
+    "file": "./logs/global_brain.log",
+    "max_bytes": 10485760,  # 10MB
+    "backup_count": 5
 }
 
 # API接口配置

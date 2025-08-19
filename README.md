@@ -82,6 +82,18 @@ python main.py --test
 test.bat
 ```
 
+### 日志配置和测试
+
+项目现在包含统一的日志配置，所有模块都会将日志输出到控制台和`agi_deployment.log`文件中。
+
+要测试日志功能，请运行：
+
+```bash
+python test_logging.py
+```
+
+这将生成测试日志并保存到`agi_deployment.log`文件中。
+
 ### 运行示例
 
 ```bash
@@ -294,6 +306,60 @@ git push -u origin master
 ```
 
 请确保在这些平台上创建相应的仓库，并配置好CI/CD流程。
+
+## 统一部署脚本
+
+项目提供了一个统一的部署脚本`deploy.py`，可以用于云部署和GitHub部署。
+
+### 云部署
+
+```bash
+python deploy.py --action cloud
+```
+
+该命令将构建Docker镜像，推送到Docker Hub，并使用docker-compose在云服务器上部署服务。
+
+**注意**: 要使用此功能，您需要在本地安装并配置Docker和Docker Compose。请确保Docker守护进程正在运行。
+
+### GitHub部署
+
+```bash
+python deploy.py --action github --repo-name your-repo-name --username your-username --token your-token
+```
+
+该命令将在GitHub上创建一个新仓库，并将项目代码推送到该仓库。
+
+**注意**: 要使用此功能，您需要提供有效的GitHub用户名和个人访问令牌。您可以按照[GitHub官方文档](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token)创建个人访问令牌。
+
+### 网络终端设备部署
+
+项目支持在网络终端设备中部署区块链模型。使用以下脚本将模型部署到指定的终端设备：
+
+```bash
+# 部署到网络终端设备
+python deploy_to_terminals.py --target-path /path/to/target/device
+```
+
+该脚本会将模型文件和必要的安装文件复制到目标设备，并生成启动脚本。
+
+## 测试终端设备部署
+
+```bash
+python test_terminal_deployment.py
+```
+
+该脚本将创建一个临时目录，然后运行`deploy_to_terminals.py`脚本将模型部署到临时目录中，并检查所有必要的文件是否已正确复制。最后，它会清理临时目录。
+
+### 终端节点示例
+
+项目包含一个终端节点示例脚本，用于演示如何在终端设备上运行模型：
+
+```bash
+# 运行终端节点示例
+python demos/terminal_node.py --target-path /path/to/target/device
+```
+
+该脚本会初始化终端节点，加载模型，并加入全球AI脑网络。
 
 ### 自动部署和同步
 

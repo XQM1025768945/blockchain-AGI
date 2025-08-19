@@ -5,14 +5,25 @@
 """
 
 import os
+import sys
 import json
 import hashlib
 import socket
+import ssl
 import threading
 import time
+import concurrent.futures
 from datetime import datetime
-from typing import List
+from typing import Dict, List, Set, Tuple, Any
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import logging_config
+
+# 设置日志配置
+logger = logging_config.get_logger('self_replication')
 
 
 class SelfReplication:
@@ -30,54 +41,79 @@ class SelfReplication:
         self.nodes = set()
         self.replication_log = []
         self.encryption_key = encryption_key or Fernet.generate_key()
+        self.iv = os.urandom(16)
         self.cipher = Fernet(self.encryption_key)
         
-    def discover_nodes(self, network_range="192.168.1", port=8888, timeout=5):
+    def discover_nodes(self, base_ip="192.168.1.", start=2, end=254, port=8888):
         """
-        发现网络中的节点
-        
-        Args:
-            network_range (str): 网络范围
-            port (int): 端口
-            timeout (int): 超时时间
+        发现网络中的其他节点。
         """
-        print(f"开始发现节点... ({network_range}.1-{network_range}.254:{port})")
-        
-        def check_host(ip, port, timeout):
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(timeout)
-                result = sock.connect_ex((ip, port))
-                sock.close()
-                if result == 0:
-                    self.nodes.add(ip)
-                    print(f"发现节点: {ip}:{port}")
-            except:
-                pass
-                
-        # 创建线程检查每个IP
-        threads = []
-        for i in range(1, 255):
-            ip = f"{network_range}.{i}"
-            thread = threading.Thread(target=check_host, args=(ip, port, timeout))
-            threads.append(thread)
-            thread.start()
+        nodes = set()
+        # 使用多线程提高节点发现效率
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+            futures = []
+            for i in range(start, end + 1):
+                ip = f"{base_ip}{i}"
+                futures.append(executor.submit(self._check_node, ip, port))
             
-        # 等待所有线程完成
-        for thread in threads:
-            thread.join()
-            
-        # 记录日志
-        self.replication_log.append({
-            "action": "discovery",
-            "network_range": network_range,
-            "port": port,
-            "nodes_found": list(self.nodes),
-            "timestamp": datetime.now(),
-            "status": "completed"
-        })
+            for future in concurrent.futures.as_completed(futures):
+                node = future.result()
+                if node:
+                    nodes.add(node)
         
-        print(f"节点发现完成，共发现 {len(self.nodes)} 个节点")
+        self.nodes.update(nodes)
+        logger.info(f"发现节点: {nodes}")
+        return list(nodes)
+
+    def _check_node(self, ip, port):
+        """
+        检查单个节点是否可用。
+        """
+        if self._is_port_open(ip, port):
+            return (ip, port)
+        return None
+        
+    def _is_port_open(self, ip, port, timeout=3):
+        """
+        检查指定IP和端口是否开放。
+        """
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            result = sock.connect_ex((ip, port))
+            sock.close()
+            return result == 0
+        except:
+            return False
+
+    def check_node_health(self, ip, port, timeout=5):
+        """
+        检查节点健康状态。
+        """
+        try:
+            # 发送健康检查请求
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.settimeout(timeout)
+            client_socket.connect((ip, port))
+            
+            # 发送健康检查消息
+            import pickle
+            health_check_msg = {"action": "health_check"}
+            encrypted_msg = self.encrypt_data(pickle.dumps(health_check_msg))
+            client_socket.send(encrypted_msg)
+            
+            # 接收响应
+            response = client_socket.recv(1024)
+            decrypted_response = self.decrypt_data(response)
+            response_data = pickle.loads(decrypted_response)
+            
+            client_socket.close()
+            
+            return response_data.get("status") == "healthy"
+        except Exception as e:
+            logger.error(f"健康检查 {ip}:{port} 失败: {e}")
+            return False
         
     def calculate_model_hash(self):
         """
@@ -94,6 +130,16 @@ class SelfReplication:
             model_hash = hashlib.sha256(model_data).hexdigest()
             
         return model_hash
+
+    def encrypt_data(self, data):
+        cipher = Cipher(algorithms.AES(self.encryption_key), modes.CFB(self.iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        return encryptor.update(data) + encryptor.finalize()
+
+    def decrypt_data(self, encrypted_data):
+        cipher = Cipher(algorithms.AES(self.encryption_key), modes.CFB(self.iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+        return decryptor.update(encrypted_data) + decryptor.finalize()
         
     def send_model(self, target_ip, target_port=8888):
         """
@@ -125,11 +171,19 @@ class SelfReplication:
             encrypted_info = self.cipher.encrypt(json.dumps(model_info).encode())
             sock.sendall(encrypted_info)
             
-            # 加密模型数据
-            encrypted_data = self.cipher.encrypt(model_data)
+            # 分块传输模型数据
+            chunk_size = 4096
+            for i in range(0, len(model_data), chunk_size):
+                chunk = model_data[i:i+chunk_size]
+                # 加密数据块
+                encrypted_chunk = self.encrypt_data(chunk)
+                # 发送数据块大小
+                sock.send(len(encrypted_chunk).to_bytes(4, byteorder='big'))
+                # 发送加密的数据块
+                sock.sendall(encrypted_chunk)
             
-            # 发送加密的模型数据
-            sock.sendall(encrypted_data)
+            # 发送结束标记
+            sock.send((0).to_bytes(4, byteorder='big'))
                     
             sock.close()
             
@@ -143,7 +197,7 @@ class SelfReplication:
                 "status": "success"
             })
             
-            print(f"模型已发送到 {target_ip}:{target_port}")
+            logger.info(f"模型已发送到 {target_ip}:{target_port}")
             return True
         except Exception as e:
             # 记录日志
@@ -156,7 +210,7 @@ class SelfReplication:
                 "error": str(e)
             })
             
-            print(f"发送模型到 {target_ip}:{target_port} 失败: {e}")
+            logger.error(f"发送模型到 {target_ip}:{target_port} 失败: {e}")
             return False
             
     def receive_model(self, save_path="./received_model", listen_port=8888):
@@ -175,12 +229,16 @@ class SelfReplication:
             server_socket.bind(("0.0.0.0", listen_port))
             server_socket.listen(5)
             
-            print(f"开始监听 {listen_port} 端口...")
+            logger.info(f"开始监听 {listen_port} 端口...")
             
             while True:
                 # 接受连接
                 client_socket, addr = server_socket.accept()
-                print(f"接收到来自 {addr} 的连接")
+                logger.info(f"接收到来自 {addr} 的连接")
+                # Wrap socket with SSL
+                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                context.load_cert_chain(certfile="cert.pem", keyfile="key.pem")
+                secure_conn = context.wrap_socket(client_socket, server_side=True)
                 
                 # 接收加密的模型信息
                 encrypted_info = client_socket.recv(1024)
@@ -191,9 +249,21 @@ class SelfReplication:
                 os.makedirs(save_path, exist_ok=True)
                 model_file_path = os.path.join(save_path, model_info["model_name"])
                 
-                # 接收加密的模型数据
-                encrypted_data = client_socket.recv(4096)
-                model_data = self.cipher.decrypt(encrypted_data)
+                # 接收模型数据块
+                model_data = b''
+                while True:
+                    # 接收数据块大小
+                    chunk_size_bytes = client_socket.recv(4)
+                    if len(chunk_size_bytes) == 0:
+                        break
+                    chunk_size = int.from_bytes(chunk_size_bytes, byteorder='big')
+                    if chunk_size == 0:
+                        break
+                    # 接收加密的数据块
+                    encrypted_chunk = client_socket.recv(chunk_size)
+                    # 解密数据块
+                    chunk = self.decrypt_data(encrypted_chunk)
+                    model_data += chunk
                 
                 # 保存模型文件
                 with open(model_file_path, "wb") as f:
@@ -206,7 +276,7 @@ class SelfReplication:
                     received_hash = hashlib.sha256(f.read()).hexdigest()
                     
                 if received_hash == model_info["model_hash"]:
-                    print(f"模型接收成功并验证通过: {model_file_path}")
+                    logger.info(f"模型接收成功并验证通过: {model_file_path}")
                     
                     # 记录日志
                     self.replication_log.append({
@@ -219,7 +289,7 @@ class SelfReplication:
                         "status": "success"
                     })
                 else:
-                    print(f"模型接收失败，哈希验证不通过")
+                    logger.error(f"模型接收失败，哈希验证不通过")
                     
                     # 记录日志
                     self.replication_log.append({
@@ -238,7 +308,7 @@ class SelfReplication:
                 
             server_socket.close()
         except Exception as e:
-            print(f"接收模型失败: {e}")
+            logger.error(f"接收模型失败: {e}")
             
             # 记录日志
             self.replication_log.append({
@@ -248,22 +318,42 @@ class SelfReplication:
                 "error": str(e)
             })
             
-    def replicate_to_all_nodes(self):
+    def replicate_to_all_nodes(self, model_path=None, max_retries=3):
         """
-        向所有发现的节点复制模型
+        将模型复制到所有发现的节点。
         """
+        if model_path:
+            self.model_path = model_path
+        
         if not self.nodes:
-            print("没有发现任何节点")
+            logger.warning("没有发现任何节点")
             return
             
-        print(f"开始向 {len(self.nodes)} 个节点复制模型...")
+        logger.info(f"开始向 {len(self.nodes)} 个节点复制模型...")
         
         success_count = 0
+        failed_nodes = []
+        
         for node_ip in self.nodes:
-            if self.send_model(node_ip, self.port):
-                success_count += 1
-                
-        print(f"复制完成，成功 {success_count}/{len(self.nodes)} 个节点")
+            success = False
+            for attempt in range(max_retries):
+                try:
+                    if self.send_model(node_ip, self.port):
+                        success = True
+                        success_count += 1
+                        break
+                except Exception as e:
+                    logger.warning(f"第{attempt+1}次尝试发送模型到 {node_ip}:{self.port} 失败: {e}")
+                    time.sleep(2 ** attempt)  # 指数退避
+            
+            if not success:
+                failed_nodes.append(node_ip)
+                logger.error(f"无法将模型发送到 {node_ip}:{self.port}，已达到最大重试次数")
+        
+        if failed_nodes:
+            logger.error(f"以下节点发送失败: {failed_nodes}")
+        else:
+            logger.info("所有节点复制完成")
         
         # 记录日志
         self.replication_log.append({

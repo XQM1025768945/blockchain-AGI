@@ -12,6 +12,12 @@ import argparse
 # 添加项目目录到Python路径
 sys.path.insert(0, os.path.dirname(__file__))
 
+# 导入统一日志配置
+import logging_config
+
+# 设置日志配置
+logging_config.setup_logging()
+
 from core.blockchain_network import BlockchainNetwork
 from core.matrix_nn import MatrixNeuralNetwork
 from contracts.smart_contract import SmartContract

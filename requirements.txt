@@ -7,3 +7,4 @@ bittensor>=0.1.0
 web3>=5.23.0
 pytest>=6.2.4
 scikit-learn>=1.0.0
+psutil>=5.8.0

@@ -4,13 +4,25 @@
 实现知识库的同步、加密传输、验证和冲突解决
 """
 
+import sys
+import os
 import hashlib
 import json
 from typing import List, Any
 from cryptography.fernet import Fernet
 
+# 添加项目根目录到sys.path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
 # 导入Merkle树实现
 from .merkle_tree import MerkleTree
+
+# 导入统一日志配置
+import logging_config
+
+# 获取日志记录器
+logger = logging_config.get_logger('knowledge_sync')
 
 
 class KnowledgeSync:
@@ -36,6 +48,7 @@ class KnowledgeSync:
         """
         self.knowledge_base[key] = data
         self._update_merkle_tree()
+        logger.info(f"已添加知识: {key}")
         
     def get_knowledge(self, key):
         """
@@ -132,10 +145,15 @@ class KnowledgeSync:
             node_knowledge_sync (KnowledgeSync): 另一个节点的知识库同步对象
         """
         # 比较Merkle树根
-        if self.merkle_tree.get_root_hash() != node_knowledge_sync.merkle_tree.get_root_hash():
+        local_root = self.merkle_tree.get_root_hash()
+        remote_root = node_knowledge_sync.merkle_tree.get_root_hash()
+        
+        if local_root != remote_root:
+            logger.info(f"检测到知识库不同步，本地根: {local_root}, 远程根: {remote_root}")
             # 根节点不同，需要同步
             # 解决冲突
             resolved_conflicts = self.resolve_conflicts(node_knowledge_sync)
+            logger.info(f"已解决 {len(resolved_conflicts)} 个冲突")
             
             # 合并两个节点的知识库
             # 创建一个新的知识库字典，包含两个节点的所有知识
@@ -150,6 +168,10 @@ class KnowledgeSync:
             # 更新两个节点的Merkle树
             self._update_merkle_tree()
             node_knowledge_sync._update_merkle_tree()
+            
+            logger.info("知识库同步完成")
+        else:
+            logger.info("知识库已同步，无需更新")
         
     def get_merkle_root(self):
         """

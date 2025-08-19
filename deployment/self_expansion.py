@@ -7,10 +7,22 @@
 import os
 import psutil
 import shutil
+import sys
 import json
-import math
+import platform
+import logging
 from datetime import datetime
 from typing import Dict, Any
+
+# 添加项目根目录到sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 导入统一日志配置
+import logging_config
+
+# 设置日志配置
+logging_config.setup_logging()
+logger = logging_config.get_logger('self_expansion')
 
 
 class SelfExpansion:
@@ -31,11 +43,14 @@ class SelfExpansion:
             "network": 0.0   # 网络能力
         }
         
+        # 初始化日志记录
+        self.logger = logging_config.get_logger('self_expansion')
+        
     def assess_capabilities(self):
         """
         评估终端能力
         """
-        print("开始评估终端能力...")
+        self.logger.info("开始评估终端能力...")
         
         # 评估计算能力（简化实现，实际应进行更复杂的计算测试）
         cpu_percent = psutil.cpu_percent(interval=1)
@@ -62,9 +77,12 @@ class SelfExpansion:
             "capabilities": self.capabilities.copy()
         })
         
+        self.logger.info(f"能力评估结果已记录到历史数据")
+        
         # 保持历史数据在合理范围内
         if len(self.performance_history) > 100:
             self.performance_history = self.performance_history[-100:]
+            self.logger.info("历史数据已截取到最近100条记录")
         
         # 记录日志
         self.expansion_log.append({
@@ -74,7 +92,7 @@ class SelfExpansion:
             "status": "completed"
         })
         
-        print(f"能力评估完成: {self.capabilities}")
+        self.logger.info(f"能力评估完成: {self.capabilities}")
         
     def allocate_resources(self, task_requirements):
         """
@@ -86,7 +104,7 @@ class SelfExpansion:
         Returns:
             dict: 资源分配方案
         """
-        print("开始资源分配...")
+        self.logger.info("开始资源分配...")
         
         allocation = {}
         
@@ -116,6 +134,7 @@ class SelfExpansion:
             
         # 使用智能算法优化分配计划
         optimized_plan = self._optimize_allocation(allocation, task_requirements)
+        self.logger.info(f"资源分配计划已优化")
         
         # 记录日志
         self.expansion_log.append({
@@ -126,7 +145,7 @@ class SelfExpansion:
             "status": "completed"
         })
         
-        print(f"资源分配完成: {optimized_plan}")
+        self.logger.info(f"资源分配完成: {optimized_plan}")
         return optimized_plan
         
     def dynamic_optimization(self, performance_feedback):
@@ -136,7 +155,7 @@ class SelfExpansion:
         Args:
             performance_feedback (dict): 性能反馈
         """
-        print("开始动态优化...")
+        self.logger.info("开始动态优化...")
         
         # 根据性能反馈调整能力评估
         if "compute_utilization" in performance_feedback:
@@ -155,6 +174,7 @@ class SelfExpansion:
                 
         # 生成优化计划
         optimization_plan = self._generate_optimization_plan(performance_feedback)
+        self.logger.info(f"动态优化计划已生成")
         
         # 记录优化结果
         self.expansion_log.append({
@@ -172,7 +192,7 @@ class SelfExpansion:
             "status": "completed"
         })
         
-        print(f"动态优化完成，更新后的能力: {self.capabilities}")
+        self.logger.info(f"动态优化完成，更新后的能力: {self.capabilities}")
         
     def expand_capabilities(self, expansion_plan):
         """
@@ -181,12 +201,14 @@ class SelfExpansion:
         Args:
             expansion_plan (dict): 拓展计划
         """
-        print("开始能力拓展...")
+        self.logger.info("开始能力拓展...")
         
         # 根据拓展计划更新能力
         for capability, improvement in expansion_plan.items():
             if capability in self.capabilities:
+                old_value = self.capabilities[capability]
                 self.capabilities[capability] *= (1 + improvement / 100)
+                self.logger.info(f"能力 {capability} 已更新: {old_value} -> {self.capabilities[capability]}")
                 
         # 记录日志
         self.expansion_log.append({
@@ -197,7 +219,7 @@ class SelfExpansion:
             "status": "completed"
         })
         
-        print(f"能力拓展完成，更新后的能力: {self.capabilities}")
+        self.logger.info(f"能力拓展完成，更新后的能力: {self.capabilities}")
     
     def get_capabilities(self):
         """

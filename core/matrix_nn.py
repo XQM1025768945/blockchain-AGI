@@ -4,9 +4,22 @@
 基于PyTorch实现矩阵运算神经网络
 """
 
+import sys
+import os
+
+# 添加项目根目录到sys.path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
 import torch
 import torch.nn as nn
 import numpy as np
+
+# 导入统一日志配置
+import logging_config
+
+# 获取日志记录器
+logger = logging_config.get_logger('matrix_nn')
 
 
 class MatrixNeuralNetwork(nn.Module):
@@ -83,7 +96,7 @@ class MatrixNeuralNetwork(nn.Module):
                 optimizer.step()
                 
                 if batch_idx % 100 == 0:
-                    print(f'Epoch {epoch}, Batch {batch_idx}, Loss: {loss.item()}')
+                    logger.info(f'Epoch {epoch}, Batch {batch_idx}, Loss: {loss.item()}')
                     
     def save_model(self, path):
         """

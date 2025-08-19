@@ -4,7 +4,20 @@
 基于Bittensor实现去中心化神经网络
 """
 
+import sys
+import os
+
+# 添加项目根目录到sys.path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
 import bittensor as bt
+
+# 导入统一日志配置
+import logging_config
+
+# 获取日志记录器
+logger = logging_config.get_logger('blockchain_network')
 
 
 class BlockchainNetwork:
@@ -35,8 +48,10 @@ class BlockchainNetwork:
             # 连接到网络
             self.subtensor = bt.subtensor()
             self.metagraph = self.subtensor.metagraph(netuid=0)  # 使用默认网络ID
+            
+            logger.info("成功连接到Bittensor网络")
         except Exception as e:
-            print(f"连接Bittensor网络失败: {e}")
+            logger.error(f"连接Bittensor网络失败: {e}")
             raise e
         
     def get_nodes(self):
