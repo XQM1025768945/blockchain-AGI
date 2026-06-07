@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  orchestrator:
+    build:
+      context: ./orchestrator
+    ports:
+      - "8000:8000"
+    networks:
+      - neural-net
+
+  neuron1:
+    build:
+      context: ./neuron-agent
+    networks:
+      - neural-net
+    depends_on:
+      - orchestrator
+    environment:
+      - REGION=cn-north
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+
+  neuron2:
+    build:
+      context: ./neuron-agent
+    networks:
+      - neural-net
+    depends_on:
+      - orchestrator
+    environment:
+      - REGION=cn-east
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+
+networks:
+  neural-net:

@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package globalneuralbrain.v1;
+
+option go_package = "./api;brainpb";
+option java_package = "com.globalneural.brain";
+
+// AIP：AI 互操作标准协议
+service GlobalNeuralBrain {
+  // 节点生命周期
+  rpc CreateNodes(CreateNodesRequest) returns (AsyncTask);
+  rpc DestroyNodes(DestroyNodesRequest) returns (AsyncTask);
+  rpc GetNodeStatus(NodeQuery) returns (stream NodeStatus);
+
+  // 网络拓扑 & 脉冲策略
+  rpc SetMeshPolicy(MeshPolicy) returns (AsyncTask);
+  rpc GetTopology(TopologyQuery) returns (TopologyGraph);
+
+  // 联邦学习 & 知识蒸馏
+  rpc SubmitLearningTask(LearningTask) returns (AsyncTask);
+  rpc GetModelStatus(ModelQuery) returns (ModelVersion);
+
+  // 静默传播 & 安全
+  rpc SetPropagationPolicy(PropPolicy) returns (AsyncTask);
+  rpc RevokeTokens(TokenRevoke) returns (CommonResult);
+
+  // 全局事件流（脉冲/异常/状态）
+  rpc SubscribeEvents(EventFilter) returns (stream GlobalEvent);
+}
+
+// 异步任务
+message AsyncTask {
+  string task_id = 1;
+  string status = 2; // PENDING/RUNNING/SUCCESS/FAILED
+  string message = 3;
+}
+
+message CreateNodesRequest {
+  string region = 1;
+  string node_type = 2; // NEURON/EDGE/CORE
+  int32 count = 3;
+  bool auto_propagate = 4;
+}
+
+message DestroyNodesRequest {
+  repeated string node_ids = 1;
+}
+
+message NodeQuery {
+  string region = 1;
+  string node_type = 2;
+}
+
+message NodeStatus {
+  string node_id = 1;
+  string type = 2;
+  string region = 3;
+  string status = 4;
+  float pulse_rate = 5;
+  int64 timestamp = 6;
+}
+
+message MeshPolicy {
+  string region = 1;
+  int32 max_hops = 2;
+  bool enable_spike_routing = 3;
+}
+
+message TopologyQuery {}
+
+message TopologyGraph {
+  bytes graph_json = 1;
+}
+
+message LearningTask {
+  string type = 1; // EDGE_DISTILL / GLOBAL_DISTILL
+  string region = 2;
+}
+
+message ModelQuery {}
+
+message ModelVersion {
+  string version = 1;
+  float accuracy = 2;
+}
+
+message PropPolicy {
+  string region = 1;
+  bool enabled = 2;
+  int32 max_devices = 3;
+}
+
+message TokenRevoke {
+  repeated string tokens = 1;
+}
+
+message CommonResult {
+  bool success = 1;
+  string msg = 2;
+}
+
+message EventFilter {
+  string event_type = 1;
+}
+
+message GlobalEvent {
+  string type = 1;
+  string node_id = 2;
+  string data = 3;
+  int64 ts = 4;
+}

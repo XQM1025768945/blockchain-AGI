@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Neural Brain · 全球部署仪表盘</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🧠</span>
+      <div>
+        <h1>Global Neural Brain</h1>
+        <p class="subtitle">全球神经网络部署态势 · 实时监控</p>
+      </div>
+    </div>
+    <div class="meta">
+      <span id="conn-status" class="status-dot online"></span>
+      <span id="conn-label">已连接</span>
+      <span class="sep">|</span>
+      <span>运行时间 <b id="uptime">--</b></span>
+      <span class="sep">|</span>
+      <span>最后更新 <b id="last-update">--</b></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 顶部指标卡片 -->
+    <section class="cards">
+      <div class="card">
+        <div class="card-label">节点总数</div>
+        <div class="card-value" id="metric-total">0</div>
+      </div>
+      <div class="card green">
+        <div class="card-label">在线节点</div>
+        <div class="card-value" id="metric-online">0</div>
+      </div>
+      <div class="card red">
+        <div class="card-label">离线节点</div>
+        <div class="card-value" id="metric-offline">0</div>
+      </div>
+      <div class="card blue">
+        <div class="card-label">覆盖区域</div>
+        <div class="card-value" id="metric-regions">0</div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <!-- 世界地图 -->
+      <div class="panel map-panel">
+        <div class="panel-head">
+          <h2>🌍 全球部署地图</h2>
+          <div class="legend">
+            <span><i class="dot pulse"></i> 脉冲活跃</span>
+            <span><i class="dot online"></i> 在线节点</span>
+          </div>
+        </div>
+        <div class="map-wrap">
+          <svg id="world-map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
+            <!-- 背景 -->
+            <defs>
+              <radialGradient id="bg" cx="50%" cy="50%" r="80%">
+                <stop offset="0%" stop-color="#0b2545" />
+                <stop offset="100%" stop-color="#020617" />
+              </radialGradient>
+              <radialGradient id="pulseGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8" />
+                <stop offset="100%" stop-color="#22d3ee" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <rect width="1000" height="500" fill="url(#bg)" />
+            <!-- 经度线 -->
+            <g stroke="#1e3a8a" stroke-width="0.5" opacity="0.5">
+              <line x1="0" y1="250" x2="1000" y2="250" />
+              <line x1="250" y1="0" x2="250" y2="500" />
+              <line x1="500" y1="0" x2="500" y2="500" />
+              <line x1="750" y1="0" x2="750" y2="500" />
+            </g>
+            <!-- 简化大陆轮廓（坐标基于 lon/lat → x/y 的简易等距投影） -->
+            <!-- 此简化轮廓由手工 polygon 描述 -->
+            <g id="continents" fill="#13315c" stroke="#1e40af" stroke-width="0.6" opacity="0.85"></g>
+            <g id="nodes"></g>
+            <g id="pulses"></g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 右侧：区域列表 + 事件流 -->
+      <div class="side">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>📍 区域分布</h2>
+            <button id="btn-refresh" class="btn">刷新</button>
+          </div>
+          <div id="region-list" class="region-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>📡 实时事件</h2>
+            <span class="hint">最近 30 条</span>
+          </div>
+          <ul id="event-stream" class="event-stream"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel nodes-panel">
+      <div class="panel-head">
+        <h2>⚙️ 节点列表</h2>
+        <div class="node-actions">
+          <select id="region-select">
+            <option value="">全部区域</option>
+          </select>
+          <button id="btn-create" class="btn primary">+ 模拟创建节点</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Node ID</th>
+              <th>区域</th>
+              <th>类型</th>
+              <th>状态</th>
+              <th>脉冲强度</th>
+              <th>注册时间</th>
+            </tr>
+          </thead>
+          <tbody id="node-table"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Powered by FastAPI · Global Neural Brain v0.1.0</span>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
